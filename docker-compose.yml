@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  # ---- KVBridge Proxy ----
+  kvbridge:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      KVBRIDGE_BACKEND: vllm                      # vllm | sglang | mindie
+      KVBRIDGE_BACKEND_URL: http://backend:8000
+      KVBRIDGE_MODEL_NAME: qwen3-coder
+      KVBRIDGE_REDIS_URL: redis://redis:6379/0
+      KVBRIDGE_LOG_LEVEL: info
+      KVBRIDGE_ENABLE_DELTA: "true"
+      KVBRIDGE_MAX_CONTEXT_ROUNDS: "3"
+      KVBRIDGE_SESSION_TTL: "3600"
+      KVBRIDGE_METRICS_ENABLED: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kvbridge-net
+
+  # ---- Redis (session persistence) ----
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - kvbridge-net
+
+  # ---- Prometheus (monitoring) ----
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    networks:
+      - kvbridge-net
+
+  # ---- Backend placeholder (replace with your actual vLLM/SGLang/MindIE) ----
+  # Uncomment ONE of the backends below:
+  #
+  # backend:
+  #   image: vllm/vllm-openai:latest
+  #   command: >
+  #     --model Qwen/Qwen3-Coder-8B
+  #     --enable-prefix-caching
+  #     --port 8000
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   networks:
+  #     - kvbridge-net
+  #
+  # backend:
+  #   image: lmsysorg/sglang:latest
+  #   command: >
+  #     --model Qwen/Qwen3-Coder-8B
+  #     --port 8000
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+  #   networks:
+  #     - kvbridge-net
+
+volumes:
+  redis-data:
+  prometheus-data:
+
+networks:
+  kvbridge-net:
+    driver: bridge
