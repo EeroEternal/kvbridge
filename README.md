@@ -2,57 +2,57 @@
 
 **Cache-Aware OpenAI Compatible Proxy for Agent Inference**
 
-KVBridge 是一个轻量级、Cache-Aware 的 OpenAI 兼容代理层，专为解决 Agent（OpenCode / OpenHands 等）在 vLLM / SGLang / MindIE 等推理引擎上 **Prefix Cache Hit Rate 极低** 的问题而设计。
+KVBridge is a lightweight, Cache-Aware OpenAI compatible proxy layer designed to solve the problem of **extremely low Prefix Cache Hit Rates** when autonomous Agents (like OpenCode, OpenHands, etc.) interact with inference engines such as vLLM, SGLang, and MindIE.
 
-## ✨ 核心特性
+## ✨ Core Features
 
-- **透明代理** — 完全兼容 OpenAI `/v1/chat/completions` API，Agent 只需改一行配置
-- **自动 Delta 压缩** — 将 Agent 的全量重发改为增量传输，保护 prefix 稳定性
-- **三后端支持** — vLLM / SGLang / MindIE-Ascend 无缝切换
-- **Cache-Aware 协议** — `/cache/status` + `/cache/append` 让 Agent 主动参与缓存管理
-- **Redis 持久化** — Session prefix registry 支持 Redis 持久化（可选内存 fallback）
-- **Prometheus 监控** — prefix_hit_rate、delta_ratio、latency 等指标实时暴露
+- **Transparent Proxy** — Fully compatible with the OpenAI `/v1/chat/completions` API. Agents only need a single line of configuration change.
+- **Automatic Delta Compression** — Transforms the Agent's full-context resend into incremental delta payload transmission, preserving prefix stability.
+- **Multi-Backend Support** — Seamlessly switch between vLLM, SGLang, and MindIE-Ascend backends.
+- **Cache-Aware Protocol** — Exposes `/cache/status` and `/cache/append` endpoints to allow Agents to proactively participate in cache management.
+- **Redis Persistence** — Supports Redis persistence for the Session prefix registry (with an in-memory fallback).
+- **Prometheus Monitoring** — Real-time exposure of metrics like `prefix_hit_rate`, `delta_ratio`, and `latency`.
 
-## 📊 性能预期
+## 📊 Performance Expectations
 
-| 指标 | 无 KVBridge | 有 KVBridge |
-|------|-------------|-------------|
+| Metric | Without KVBridge | With KVBridge |
+|--------|------------------|---------------|
 | Prefix Cache Hit Rate | 5–15% | **80–95%** |
-| 单 Session Token 消耗 | 基准 | **降低 4–8×** |
-| TTFT (首 Token 延迟) | 基准 | **降低 2–5×** |
+| Single Session Token Cost | Baseline | **Reduced 4–8×** |
+| TTFT (Time To First Token) | Baseline | **Reduced 2–5×** |
 
-## 🚀 快速启动
+## 🚀 Quick Start
 
-### 方式一：Docker Compose（推荐）
+### Option 1: Docker Compose (Recommended)
 
 ```bash
-# 1. 配置环境变量
+# 1. Configure environment variables
 cp .env.example .env
-# 编辑 .env，设置后端类型和地址
+# Edit .env to set the backend type and URL
 
-# 2. 启动服务
+# 2. Start services
 docker compose up -d
 
-# 3. 验证
+# 3. Verify health
 curl http://localhost:8001/health
 ```
 
-### 方式二：本地开发
+### Option 2: Local Development
 
 ```bash
-# 1. 安装依赖
+# 1. Install requirements
 pip install -r requirements.txt
 
-# 2. 配置
+# 2. Configure
 cp .env.example .env
 
-# 3. 启动
+# 3. Start proxy
 python -m kvbridge.main
 ```
 
-### OpenCode 配置
+### OpenCode Configuration
 
-只需修改 provider 配置，即可接入 KVBridge：
+Simply modify your provider configuration to route through KVBridge:
 
 ```json
 {
@@ -66,36 +66,36 @@ python -m kvbridge.main
 }
 ```
 
-## ⚙️ 配置说明
+## ⚙️ Configuration Reference
 
-所有配置通过环境变量（`KVBRIDGE_` 前缀）或 `.env` 文件：
+All configuration is managed via environment variables (with a `KVBRIDGE_` prefix) or via the `.env` file:
 
-| 环境变量 | 默认值 | 说明 |
-|----------|--------|------|
-| `KVBRIDGE_HOST` | `0.0.0.0` | 监听地址 |
-| `KVBRIDGE_PORT` | `8001` | 监听端口 |
-| `KVBRIDGE_BACKEND` | `vllm` | 后端类型：`vllm` / `sglang` / `mindie` |
-| `KVBRIDGE_BACKEND_URL` | `http://localhost:8000` | 后端推理服务地址 |
-| `KVBRIDGE_MODEL_NAME` | `qwen3-coder` | 对外暴露的模型名称 |
-| `KVBRIDGE_REDIS_URL` | *(空)* | Redis 地址，空则使用内存 |
-| `KVBRIDGE_SESSION_TTL` | `3600` | Session 过期时间（秒） |
-| `KVBRIDGE_MAX_CONTEXT_ROUNDS` | `3` | 保留的最近对话轮数 |
-| `KVBRIDGE_ENABLE_DELTA` | `true` | 是否启用 Delta 压缩 |
-| `KVBRIDGE_METRICS_ENABLED` | `true` | 是否启用 Prometheus 指标 |
+| Environment Variable | Default Value | Description |
+|----------------------|---------------|-------------|
+| `KVBRIDGE_HOST` | `0.0.0.0` | Listening address |
+| `KVBRIDGE_PORT` | `8001` | Listening port |
+| `KVBRIDGE_BACKEND` | `vllm` | Backend engine: `vllm`, `sglang`, or `mindie` |
+| `KVBRIDGE_BACKEND_URL` | `http://localhost:8000` | URL of the backend inference service |
+| `KVBRIDGE_MODEL_NAME` | `qwen3-coder` | The model name exposed to clients |
+| `KVBRIDGE_REDIS_URL` | *(empty)* | Redis URL. Leaves empty to use in-memory state |
+| `KVBRIDGE_SESSION_TTL` | `3600` | Session expiration time (seconds) |
+| `KVBRIDGE_MAX_CONTEXT_ROUNDS` | `3` | Number of recent conversation rounds to retain |
+| `KVBRIDGE_ENABLE_DELTA` | `true` | Whether to enable Delta Compression |
+| `KVBRIDGE_METRICS_ENABLED` | `true` | Whether to expose Prometheus metrics |
 
-## 📡 API 文档
+## 📡 API Documentation
 
-### OpenAI 兼容接口
+### OpenAI Compatible Endpoints
 
 ```
-POST /v1/chat/completions   # 完全兼容 OpenAI Chat API
-GET  /v1/models              # 模型列表
-GET  /health                 # 健康检查
+POST /v1/chat/completions   # Fully compatible OpenAI Chat API
+GET  /v1/models             # List available models
+GET  /health                # Health check
 ```
 
-### Cache-Aware 协议
+### Cache-Aware Protocol
 
-**查询缓存状态：**
+**Query Cache Status:**
 
 ```bash
 curl "http://localhost:8001/cache/status?session_id=my-session"
@@ -113,7 +113,7 @@ curl "http://localhost:8001/cache/status?session_id=my-session"
 }
 ```
 
-**追加增量消息：**
+**Append Delta Messages:**
 
 ```bash
 curl -X POST http://localhost:8001/cache/append \
@@ -122,66 +122,66 @@ curl -X POST http://localhost:8001/cache/append \
     "session_id": "my-session",
     "prefix_id": "kvbridge:my-session:abc12345",
     "delta_messages": [
-      {"role": "user", "content": "新的问题"}
+      {"role": "user", "content": "New follow-up question"}
     ]
   }'
 ```
 
-### 响应头
+### Response Headers
 
-每个 `/v1/chat/completions` 响应都包含 KVBridge 诊断头：
+Each `/v1/chat/completions` response contains KVBridge diagnostic headers:
 
-| Header | 说明 |
-|--------|------|
-| `X-KVBridge-Session` | 使用的 Session ID |
-| `X-KVBridge-Prefix-Hit` | 是否命中前缀缓存 (`true`/`false`) |
-| `X-KVBridge-Delta-Ratio` | Delta 压缩比 (越低越好) |
+| Header | Description |
+|--------|-------------|
+| `X-KVBridge-Session` | The Session ID used for the request |
+| `X-KVBridge-Prefix-Hit` | Whether the prefix cache was hit (`true`/`false`) |
+| `X-KVBridge-Delta-Ratio` | Delta compression ratio (lower is better) |
 
-## 🏗️ 架构
+## 🏗️ Architecture
 
 ```
-OpenCode / OpenHands
-        ↓ (标准 OpenAI /v1/chat/completions)
+OpenCode / OpenHands / AI Agents
+        ↓ (Standard OpenAI /v1/chat/completions)
    [ KVBridge (FastAPI Proxy) ]
         ├── Session Tracker + Delta Compressor
         ├── /cache/status + /cache/append
         ├── Backend Router (vLLM / SGLang / MindIE)
         └── Prometheus Metrics (/metrics)
                 ↓
-   [ 推理后端 (vLLM / SGLang / MindIE) ]
+   [ Inference Backend (vLLM / SGLang / MindIE) ]
          ↑
    Prefix Cache / RadixAttention / HiCache
 ```
 
-## 🧪 测试
+## 🧪 Testing
 
 ```bash
 pip install pytest pytest-asyncio
 pytest -v
 ```
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 kvbridge/
 ├── kvbridge/
-│   ├── __init__.py            # 版本号
-│   ├── main.py                # FastAPI 应用入口
-│   ├── config.py              # pydantic-settings 配置
+│   ├── __init__.py            # Version info
+│   ├── main.py                # FastAPI app entry point
+│   ├── config.py              # pydantic-settings config
 │   ├── session.py             # SessionTracker + DeltaCompressor
 │   ├── cache_protocol.py      # /cache/status + /cache/append
 │   ├── backend/
 │   │   ├── __init__.py
-│   │   ├── base.py            # 抽象后端接口 + 工厂函数
-│   │   ├── vllm.py            # vLLM 后端
-│   │   ├── sglang.py          # SGLang 后端
-│   │   └── mindie.py          # MindIE-Ascend 后端
-│   ├── metrics.py             # Prometheus 指标定义
-│   └── utils.py               # 工具函数
+│   │   ├── base.py            # Abstract interface + Backend factory
+│   │   ├── vllm.py            # vLLM backend
+│   │   ├── sglang.py          # SGLang backend
+│   │   └── mindie.py          # MindIE-Ascend backend
+│   ├── metrics.py             # Prometheus metrics definition
+│   └── utils.py               # Utilities
 ├── tests/
-│   ├── test_session.py        # Session/Delta 单元测试
-│   ├── test_api.py            # API 集成测试
-│   └── test_utils.py          # 工具函数测试
+│   ├── test_session.py        # Session/Delta unit tests
+│   ├── test_api.py            # API integration tests
+│   └── test_utils.py          # Utils unit tests
 ├── docker-compose.yml
 ├── Dockerfile
 ├── prometheus.yml
